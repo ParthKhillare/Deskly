@@ -42,9 +42,8 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isAuthenticated() &&
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-         (request.auth.token.email == "parthkhillareiiitb@gmail.com" && request.auth.token.email_verified == true));
+  return isAuthenticated() &&
+    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     function isValidUser(data) {
@@ -81,8 +80,9 @@ service cloud.firestore {
                     (request.resource.data.role == 'user' || isAdmin());
       
       // Users can update their own profile, but cannot change their role unless admin
-      allow update: if isOwner(userId) && isValidUser(request.resource.data) && 
-                    (request.resource.data.role == resource.data.role || isAdmin());
+      allow update: if (isOwner(resource.data.userId) || isAdmin()) &&
+              isValidLocation(request.resource.data) &&
+              request.resource.data.createdAt == resource.data.createdAt;
     }
 
     match /locations/{locationId} {
