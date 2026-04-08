@@ -1,0 +1,5 @@
+{
+  "name": "Deskly",
+  "description": "A crowdsourced map for discovering and sharing the best local spots, study cafes, and hidden gems.",
+  "requestFramePermissions": ["geolocation"]
+}

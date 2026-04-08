@@ -1,0 +1,46 @@
+{
+  "entities": {
+    "user": {
+      "title": "User Profile",
+      "description": "User account information and settings.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Unique identifier for the user." },
+        "displayName": { "type": "string", "description": "User's display name." },
+        "email": { "type": "string", "format": "email", "description": "User's email address." },
+        "photoURL": { "type": "string", "format": "uri", "description": "User's profile picture URL." },
+        "role": { "type": "string", "enum": ["admin", "user"], "description": "User's role in the application." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the user account was created." }
+      },
+      "required": ["uid", "displayName", "email", "role", "createdAt"]
+    },
+    "location": {
+      "title": "Map Location",
+      "description": "A crowdsourced location on the map.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the location." },
+        "title": { "type": "string", "description": "Title of the location." },
+        "description": { "type": "string", "description": "Detailed description of the location." },
+        "lat": { "type": "number", "description": "Latitude coordinate." },
+        "lng": { "type": "number", "description": "Longitude coordinate." },
+        "userId": { "type": "string", "description": "UID of the user who added this location." },
+        "userName": { "type": "string", "description": "Name of the user who added this location." },
+        "category": { "type": "string", "enum": ["Work", "Coffee", "Study", "Hidden Gem", "Food"], "description": "Category of the location." },
+        "tags": { "type": "array", "items": { "type": "string" }, "description": "Tags associated with the location (e.g., WiFi, quiet)." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the location was added." }
+      },
+      "required": ["id", "title", "lat", "lng", "userId", "userName", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "user",
+      "description": "Stores user profile data."
+    },
+    "/locations/{locationId}": {
+      "schema": "location",
+      "description": "Stores crowdsourced map locations."
+    }
+  }
+}

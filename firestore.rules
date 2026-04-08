@@ -1,0 +1,100 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required) - Unique identifier
+    //   - displayName: string (required) - User's name
+    //   - email: string (required) - User's email (PII)
+    //   - photoURL: string (optional) - Profile pic
+    //   - role: string (required) - 'admin' or 'user'
+    //   - createdAt: timestamp (required) - Creation time
+    //
+    // Collection: locations
+    // Document ID: {locationId}
+    // Fields:
+    //   - id: string (required) - Unique identifier
+    //   - title: string (required) - Title of the spot
+    //   - description: string (optional) - Details
+    //   - lat: number (required) - Latitude
+    //   - lng: number (required) - Longitude
+    //   - userId: string (required) - Creator's UID
+    //   - userName: string (required) - Creator's name
+    //   - tags: list (optional) - Array of strings
+    //   - createdAt: timestamp (required) - Creation time
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "parthkhillareiiitb@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'displayName', 'email', 'role', 'createdAt']) &&
+             data.uid is string && data.uid.size() > 0 &&
+             data.displayName is string && data.displayName.size() > 0 && data.displayName.size() < 100 &&
+             data.email is string && data.email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$") &&
+             data.role in ['admin', 'user'] &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidLocation(data) {
+      return data.keys().hasAll(['id', 'title', 'lat', 'lng', 'userId', 'userName', 'createdAt']) &&
+             data.id is string && data.id.size() > 0 &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.lat is number && data.lat >= -90 && data.lat <= 90 &&
+             data.lng is number && data.lng >= -180 && data.lng <= 180 &&
+             data.userId is string && data.userId == request.auth.uid &&
+             data.userName is string && data.userName.size() > 0 &&
+             data.createdAt is timestamp &&
+             (!('tags' in data) || data.tags is list);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      // Users can only read their own profile (contains PII like email)
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // Users can create their own profile, but cannot set themselves as admin unless already admin
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && 
+                    (request.resource.data.role == 'user' || isAdmin());
+      
+      // Users can update their own profile, but cannot change their role unless admin
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && 
+                    (request.resource.data.role == resource.data.role || isAdmin());
+    }
+
+    match /locations/{locationId} {
+      // Anyone can read locations (it's a public map)
+      allow read: if true;
+      
+      // Authenticated users can create locations
+      allow create: if isAuthenticated() && isValidLocation(request.resource.data);
+      
+      // Only the owner or admin can update/delete locations
+      allow update: if (isOwner(resource.data.userId) || isAdmin()) && isValidLocation(request.resource.data);
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+  }
+}
